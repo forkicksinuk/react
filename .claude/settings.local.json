@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Stop-Process -Id 13504 -Force)",
+      "Bash(/c/Windows/System32/taskkill.exe //PID 13504 //F)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
+    ]
+  }
+}
