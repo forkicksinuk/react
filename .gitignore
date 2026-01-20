@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Experiments
+exp/
+changelog/
+
+# Claude
+.claude/
