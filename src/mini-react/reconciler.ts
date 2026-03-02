@@ -1,63 +1,73 @@
 import type { FC, Fiber, VNode } from "./types";
 import { createDom, updateDom } from "./dom";
-import { fiberState } from "./state";
+import { renderContext } from "./state";
 
 export function render(vNode: VNode, container: HTMLElement | Text) {
-  fiberState.wipRoot = {
+  renderContext.wipRoot = {
     dom: container,
     props: {
       children: [vNode],
     },
     type: "ROOT",
-    alternate: fiberState.currentRoot,
+    parent: null,
+    child: null,
+    sibling: null,
+    alternate: renderContext.currentRoot,
+    effectTag: null,
+    hooks: null,
   } as Fiber;
 
-  fiberState.deletions = [];
-  fiberState.nextUnitOfWork = fiberState.wipRoot;
+  renderContext.deletions = [];
+  renderContext.nextUnitOfWork = renderContext.wipRoot;
+
+  requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
-  fiberState.deletions.forEach(commitWork);
+  const wipRoot = renderContext.wipRoot;
+  if (!wipRoot) return;
 
-  if (fiberState.wipRoot?.child) {
-    commitWork(fiberState.wipRoot.child);
+  renderContext.deletions.forEach(commitWork);
+
+  if (wipRoot.child !== null) {
+    commitWork(wipRoot.child);
   }
-  fiberState.currentRoot = fiberState.wipRoot;
-  fiberState.wipRoot = null;
+  renderContext.currentRoot = wipRoot;
+  renderContext.wipRoot = null;
 
   flushEffects();
 }
 
 function flushEffects() {
-  fiberState.pendingEffects.forEach((effect) => {
+  renderContext.pendingEffects.forEach((effect) => {
     if (effect.cleanup) {
       effect.cleanup();
     }
   });
 
-  fiberState.pendingEffects.forEach((effect) => {
+  renderContext.pendingEffects.forEach((effect) => {
     const cleanup = effect.callback();
     if (typeof cleanup === "function") {
       effect.cleanup = cleanup;
     }
   });
 
-  fiberState.pendingEffects = [];
+  renderContext.pendingEffects = [];
 }
 
-function commitWork(fiber?: Fiber) {
+function commitWork(fiber?: Fiber | null) {
   if (!fiber) return;
 
   let domParentFiber = fiber.parent;
-  while (domParentFiber && !domParentFiber.dom) {
+  while (domParentFiber !== null && domParentFiber.dom === null) {
     domParentFiber = domParentFiber.parent;
   }
-  const domParent = domParentFiber?.dom;
+  const domParent = domParentFiber?.dom ?? null;
 
-  if (fiber.effectTag === "PLACEMENT" && fiber.dom && domParent) {
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom !== null && domParent) {
     domParent.appendChild(fiber.dom);
-  } else if (fiber.effectTag === "UPDATE" && fiber.dom) {
-    updateDom(fiber.dom, fiber.alternate?.props || {}, fiber.props);
+  } else if (fiber.effectTag === "UPDATE" && fiber.dom !== null) {
+    updateDom(fiber.dom, fiber.alternate?.props ?? {}, fiber.props);
   } else if (fiber.effectTag === "DELETION" && domParent) {
     commitDeletion(fiber, domParent);
     return;
@@ -74,29 +84,32 @@ function commitDeletion(fiber: Fiber, domParent: HTMLElement | Text) {
     }
   });
 
-  if (fiber.dom) {
+  // 清除被删除元素的 ref
+  if (fiber.props?.ref && typeof fiber.props.ref === "object") {
+    fiber.props.ref.current = null;
+  }
+
+  if (fiber.dom !== null) {
     domParent.removeChild(fiber.dom);
-  } else if (fiber.child) {
+  } else if (fiber.child !== null) {
     commitDeletion(fiber.child, domParent);
   }
 }
 
 function workLoop(deadline: IdleDeadline) {
-  let shouldYield = false;
+  let shouldYield = deadline.timeRemaining() < 5;
 
-  while (fiberState.nextUnitOfWork && !shouldYield) {
-    fiberState.nextUnitOfWork = performUnitOfWork(fiberState.nextUnitOfWork);
+  while (renderContext.nextUnitOfWork && !shouldYield) {
+    renderContext.nextUnitOfWork = performUnitOfWork(renderContext.nextUnitOfWork);
     shouldYield = deadline.timeRemaining() < 5;
   }
 
-  if (!fiberState.nextUnitOfWork && fiberState.wipRoot) {
+  if (!renderContext.nextUnitOfWork && renderContext.wipRoot) {
     commitRoot();
   }
 
   requestIdleCallback(workLoop);
 }
-
-requestIdleCallback(workLoop);
 
 function performUnitOfWork(fiber: Fiber): Fiber | null {
   const isFunctionComponent = fiber.type instanceof Function;
@@ -107,13 +120,13 @@ function performUnitOfWork(fiber: Fiber): Fiber | null {
     updateHostComponent(fiber);
   }
 
-  if (fiber.child) {
+  if (fiber.child !== null) {
     return fiber.child;
   }
 
-  let nextFiber: Fiber | undefined = fiber;
+  let nextFiber: Fiber | null = fiber;
   while (nextFiber) {
-    if (nextFiber.sibling) {
+    if (nextFiber.sibling !== null) {
       return nextFiber.sibling;
     }
     nextFiber = nextFiber.parent;
@@ -123,16 +136,16 @@ function performUnitOfWork(fiber: Fiber): Fiber | null {
 }
 
 function updateFunctionComponent(fiber: Fiber) {
-  fiberState.wipFiber = fiber;
-  fiberState.hookIndex = 0;
-  fiberState.wipFiber.hooks = [];
+  renderContext.wipFiber = fiber;
+  renderContext.hookIndex = 0;
+  renderContext.wipFiber.hooks = [];
 
   const children = [(fiber.type as FC)(fiber.props)];
   reconcileChildren(fiber, children);
 }
 
 function updateHostComponent(fiber: Fiber) {
-  if (!fiber.dom) {
+  if (fiber.dom === null) {
     fiber.dom = createDom(fiber);
   }
   reconcileChildren(fiber, fiber.props.children as VNode[]);
@@ -155,8 +168,11 @@ function reconcileChildren(parentFiber: Fiber, elements: VNode[]) {
         props: element.props,
         dom: oldFiber.dom,
         parent: parentFiber,
+        child: null,
+        sibling: null,
         alternate: oldFiber,
         effectTag: "UPDATE",
+        hooks: null,
       };
     }
 
@@ -166,13 +182,17 @@ function reconcileChildren(parentFiber: Fiber, elements: VNode[]) {
         props: element.props,
         dom: null,
         parent: parentFiber,
+        child: null,
+        sibling: null,
+        alternate: null,
         effectTag: "PLACEMENT",
+        hooks: null,
       };
     }
 
     if (oldFiber && !sameType) {
       oldFiber.effectTag = "DELETION";
-      fiberState.deletions.push(oldFiber);
+      renderContext.deletions.push(oldFiber);
     }
 
     if (oldFiber) {

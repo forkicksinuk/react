@@ -1,12 +1,12 @@
 import type { Effect } from "./types";
-import { fiberState } from "./state";
+import { renderContext } from "./state";
 
 export function useEffect(
   callback: () => void | (() => void),
   deps?: any[]
 ): void {
-  const oldHook = fiberState.wipFiber?.alternate?.hooks?.[
-    fiberState.hookIndex
+  const oldHook = renderContext.wipFiber?.alternate?.hooks?.[
+    renderContext.hookIndex
   ] as Effect | undefined;
 
   const hasChanged =
@@ -22,9 +22,9 @@ export function useEffect(
   };
 
   if (hasChanged) {
-    fiberState.pendingEffects.push(hook);
+    renderContext.pendingEffects.push(hook);
   }
 
-  fiberState.wipFiber?.hooks?.push(hook);
-  fiberState.hookIndex += 1;
+  renderContext.wipFiber?.hooks?.push(hook);
+  renderContext.hookIndex += 1;
 }

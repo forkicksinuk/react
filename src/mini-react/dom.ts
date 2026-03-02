@@ -1,7 +1,8 @@
 import type { Fiber } from "./types";
 
 const isEvent = (key: string) => key.startsWith("on");
-const isProperty = (key: string) => key !== "children" && !isEvent(key);
+const isProperty = (key: string) =>
+  key !== "children" && key !== "ref" && !isEvent(key);
 const isNew =
   (prev: Record<string, any>, next: Record<string, any>) => (key: string) =>
     prev[key] !== next[key];
@@ -45,6 +46,14 @@ export function updateDom(
       const eventType = name.toLowerCase().substring(2);
       dom.addEventListener(eventType, nextProps[name]);
     });
+
+  // 处理 ref：将 DOM 元素赋给 ref.current
+  if (prevProps.ref && prevProps.ref !== nextProps.ref) {
+    prevProps.ref.current = null;
+  }
+  if (nextProps.ref && typeof nextProps.ref === "object") {
+    nextProps.ref.current = dom;
+  }
 }
 
 export function createDom(fiber: Fiber): HTMLElement | Text {

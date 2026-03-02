@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniReact 架构图</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const diagrams = document.querySelectorAll('.mermaid');
+            for (const diagram of diagrams) {
+                try {
+                    const { svg } = await mermaid.render('arch-' + Math.random().toString(36).slice(2), diagram.textContent);
+                    diagram.innerHTML = svg;
+                } catch (e) {
+                    diagram.innerHTML = `<pre style="color:red">${e.message}</pre>`;
+                }
+            }
+        });
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 24px;
+            color: #eee;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 2rem;
+            color: #61dafb;
+        }
+        .diagram {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+        .diagram h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: #a5d6ff;
+        }
+        .mermaid { display: flex; justify-content: center; }
+    </style>
+</head>
+<body>
+    <h1>MiniReact 当前架构图</h1>
+
+    <div class="diagram">
+        <h2>1. 模块依赖关系</h2>
+        <div class="mermaid">
+flowchart TB
+    subgraph Entry["入口层"]
+        main["main.tsx<br/>应用入口"]
+    end
+
+    subgraph MiniReact["mini-react.ts 统一导出"]
+        CE[createElement]
+        R[render]
+        US[useState]
+        UE[useEffect]
+        UR[useRef]
+    end
+
+    subgraph Core["核心层"]
+        element["element.ts<br/>createElement"]
+        reconciler["reconciler.ts<br/>render / workLoop / commit"]
+        dom["dom.ts<br/>createDom / updateDom"]
+    end
+
+    subgraph Hooks["Hooks 层"]
+        useState["useState.ts"]
+        useEffect["useEffect.ts"]
+        useRef["useRef.ts"]
+    end
+
+    subgraph Shared["共享层"]
+        types["types.ts"]
+        state["state.ts<br/>fiberState"]
+    end
+
+    main --> CE
+    main --> R
+    main --> US
+    main --> UE
+    main --> UR
+    CE --> element
+    R --> reconciler
+    US --> useState
+    UE --> useEffect
+    UR --> useRef
+
+    element --> types
+    reconciler --> dom
+    reconciler --> state
+    reconciler --> types
+    useState --> state
+    useState --> types
+    useEffect --> state
+    useEffect --> types
+    useRef --> state
+    useRef --> types
+    dom --> types
+
+    style Entry fill:#e3f2fd
+    style Core fill:#fff3e0
+    style Hooks fill:#fce4ec
+    style Shared fill:#f3e5f5
+        </div>
+    </div>
+
+    <div class="diagram">
+        <h2>2. 数据流与渲染流程</h2>
+        <div class="mermaid">
+flowchart LR
+    JSX["JSX"] --> VNode["VNode"]
+    VNode --> Fiber["Fiber"]
+    Fiber --> WorkLoop["workLoop"]
+    WorkLoop --> Perform["performUnitOfWork"]
+    Perform --> Reconcile["reconcileChildren"]
+    Reconcile --> Commit["commitRoot"]
+    Commit --> DOM["真实 DOM"]
+    Commit --> Effects["flushEffects"]
+
+    style JSX fill:#e1f5fe
+    style WorkLoop fill:#fff9c4
+    style Commit fill:#ffccbc
+        </div>
+    </div>
+
+    <div class="diagram">
+        <h2>3. fiberState 与 Fiber 树</h2>
+        <div class="mermaid">
+flowchart TB
+    subgraph fiberState["fiberState"]
+        nextUnit["nextUnitOfWork"]
+        wipRoot["wipRoot"]
+        currentRoot["currentRoot"]
+        deletions["deletions"]
+        wipFiber["wipFiber"]
+        hookIdx["hookIndex"]
+        pendingFX["pendingEffects"]
+    end
+
+    subgraph FiberTree["Fiber 树"]
+        Root["ROOT"] --> child["child"]
+        child --> sibling["sibling"]
+        child -.-> alternate["alternate 双缓冲"]
+    end
+
+    wipRoot --> Root
+    currentRoot --> Root
+    wipFiber --> Hooks["hooks[]"]
+
+    style fiberState fill:#e8eaf6
+    style FiberTree fill:#e0f2f1
+        </div>
+    </div>
+</body>
+</html>

@@ -13,6 +13,15 @@ export interface Hook {
   queue: ((state: any) => any)[];
 }
 
+/** useRef 存储的可变引用，跨渲染保持同一对象 */
+export interface RefObject<T> {
+  current: T;
+}
+
+export interface RefHook {
+  ref: RefObject<any>;
+}
+
 export interface Effect {
   callback: () => void | (() => void);
   deps: any[] | undefined;
@@ -25,11 +34,11 @@ export interface Fiber {
     children: (VNode | string | number)[];
     [key: string]: any;
   };
-  dom?: HTMLElement | Text | null;
-  parent?: Fiber;
-  child?: Fiber;
-  sibling?: Fiber;
-  alternate?: Fiber;
-  effectTag?: "PLACEMENT" | "UPDATE" | "DELETION";
-  hooks?: (Hook | Effect)[];
+  dom: HTMLElement | Text | null;
+  parent: Fiber | null;
+  child: Fiber | null;
+  sibling: Fiber | null;
+  alternate: Fiber | null;
+  effectTag: "PLACEMENT" | "UPDATE" | "DELETION" | null;
+  hooks: (Hook | Effect | RefHook)[] | null;
 }

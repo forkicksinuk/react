@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniReact 详细流程图</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        // 加载 Markdown 文件
+        fetch('./minireact-flowchart.md')
+            .then(response => response.text())
+            .then(markdown => {
+                // 配置 marked 渲染器
+                const renderer = new marked.Renderer();
+                const originalCode = renderer.code.bind(renderer);
+
+                renderer.code = function(code, language) {
+                    if (language === 'mermaid') {
+                        return `<div class="mermaid">${code}</div>`;
+                    }
+                    return originalCode(code, language);
+                };
+
+                marked.setOptions({ renderer });
+
+                // 渲染 Markdown
+                document.getElementById('content').innerHTML = marked.parse(markdown);
+
+                // 渲染 Mermaid 图表
+                mermaid.run({
+                    querySelector: '.mermaid'
+                });
+            })
+            .catch(error => {
+                console.error('Error loading markdown:', error);
+                document.getElementById('content').innerHTML =
+                    '<p style="color: red;">加载 Markdown 文件失败。请确保 minireact-flowchart.md 文件在同一目录下。</p>';
+            });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #content {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 4px solid #61dafb;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            border-left: 5px solid #61dafb;
+            padding-left: 20px;
+            font-size: 1.8em;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .mermaid {
+            background: #fafafa;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: 'Fira Code', 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+
+        p code {
+            background: #f0f0f0;
+            color: #e83e8c;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 40px 0;
+        }
+
+        blockquote {
+            border-left: 4px solid #61dafb;
+            padding-left: 20px;
+            margin: 20px 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Mermaid 图表样式优化 */
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <p style="text-align: center; color: #666;">正在加载流程图...</p>
+    </div>
+</body>
+</html>

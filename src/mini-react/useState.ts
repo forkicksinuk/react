@@ -1,11 +1,11 @@
 import type { Hook, Fiber } from "./types";
-import { fiberState } from "./state";
+import { renderContext } from "./state";
 
 export function useState<T>(
   initial: T
 ): [T, (action: T | ((prev: T) => T)) => void] {
-  const oldHook = fiberState.wipFiber?.alternate?.hooks?.[
-    fiberState.hookIndex
+  const oldHook = renderContext.wipFiber?.alternate?.hooks?.[
+    renderContext.hookIndex
   ] as Hook | undefined;
 
   const hook: Hook = {
@@ -24,18 +24,23 @@ export function useState<T>(
   const setState = (action: T | ((prev: T) => T)) => {
     hook.queue.push(action as any);
 
-    fiberState.wipRoot = {
-      dom: fiberState.currentRoot?.dom,
-      props: fiberState.currentRoot?.props || { children: [] },
-      type: fiberState.currentRoot?.type || "ROOT",
-      alternate: fiberState.currentRoot,
+    renderContext.wipRoot = {
+      dom: renderContext.currentRoot?.dom ?? null,
+      props: renderContext.currentRoot?.props ?? { children: [] },
+      type: renderContext.currentRoot?.type ?? "ROOT",
+      parent: null,
+      child: null,
+      sibling: null,
+      alternate: renderContext.currentRoot,
+      effectTag: null,
+      hooks: null,
     } as Fiber;
-    fiberState.nextUnitOfWork = fiberState.wipRoot;
-    fiberState.deletions = [];
+    renderContext.nextUnitOfWork = renderContext.wipRoot;
+    renderContext.deletions = [];
   };
 
-  fiberState.wipFiber?.hooks?.push(hook);
-  fiberState.hookIndex += 1;
+  renderContext.wipFiber?.hooks?.push(hook);
+  renderContext.hookIndex += 1;
 
   return [hook.state, setState];
 }

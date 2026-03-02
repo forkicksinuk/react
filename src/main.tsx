@@ -1,4 +1,4 @@
-import MiniReact, { useState, useEffect } from "./mini-react/mini-react";
+import MiniReact, { useState, useEffect, useRef } from "./mini-react/mini-react";
 
 // ========== 样式常量 ==========
 const styles = {
@@ -300,6 +300,57 @@ function ColorPicker() {
   );
 }
 
+// ========== useRef 演示：输入框聚焦 + 渲染计数 ==========
+function RefDemo() {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const renderCountRef = useRef(0);
+  const [, forceUpdate] = useState(0);
+
+  renderCountRef.current += 1; // 修改 ref 不触发重渲染
+
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div style={toStyleStr(styles.card)}>
+      <h2 style="margin-top:0;color:#333;">🔗 useRef 演示</h2>
+      <p style="color:#666;margin-bottom:16px;">
+        1. 点击按钮聚焦输入框（DOM 引用）<br />
+        2. 渲染次数由 ref 存储，修改不触发重渲染
+      </p>
+      <div style="margin-bottom:12px;">
+        <input
+          ref={inputRef}
+          style={toStyleStr(styles.input)}
+          placeholder="点击右侧按钮聚焦我"
+        />
+        <button
+          style={toStyleStr({ ...styles.button, ...styles.primaryBtn })}
+          onClick={focusInput}
+        >
+          聚焦输入框
+        </button>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <span style="color:#666;">
+          组件渲染次数: <strong>{renderCountRef.current}</strong>
+        </span>
+        <button
+          style={toStyleStr({
+            ...styles.button,
+            ...styles.successBtn,
+            padding: "8px 16px",
+          })}
+          onClick={() => forceUpdate((n) => n + 1)}
+        >
+          强制重渲染
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ========== 计时器组件（useEffect 测试）==========
 function Timer() {
   const [seconds, setSeconds] = useState(0);
@@ -411,13 +462,14 @@ function App() {
       <Counter />
       <TodoList />
       <ColorPicker />
+      <RefDemo />
       <Timer />
       <PerformanceTest />
 
       <footer style="text-align:center;color:rgba(255,255,255,0.7);margin-top:30px;padding:20px;">
         <p>🚀 Powered by Mini React with Fiber Architecture</p>
         <p style="font-size:14px;">
-          ✓ 可中断渲染 | ✓ useState Hook | ✓ useEffect Hook | ✓ Diff 算法 | ✓ 事件处理
+          ✓ 可中断渲染 | ✓ useState | ✓ useEffect | ✓ useRef | ✓ Diff 算法 | ✓ 事件处理
         </p>
       </footer>
     </div>
