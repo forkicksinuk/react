@@ -41,4 +41,5 @@ export interface Fiber {
   alternate: Fiber | null;
   effectTag: "PLACEMENT" | "UPDATE" | "DELETION" | null;
   hooks: (Hook | Effect | RefHook)[] | null;
+  deletions?: Fiber[];
 }

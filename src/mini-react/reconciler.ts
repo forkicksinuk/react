@@ -17,7 +17,6 @@ export function render(vNode: VNode, container: HTMLElement | Text) {
     hooks: null,
   } as Fiber;
 
-  renderContext.deletions = [];
   renderContext.nextUnitOfWork = renderContext.wipRoot;
 
   requestIdleCallback(workLoop);
@@ -27,11 +26,8 @@ function commitRoot() {
   const wipRoot = renderContext.wipRoot;
   if (!wipRoot) return;
 
-  renderContext.deletions.forEach(commitWork);
+  commitWork(wipRoot);
 
-  if (wipRoot.child !== null) {
-    commitWork(wipRoot.child);
-  }
   renderContext.currentRoot = wipRoot;
   renderContext.wipRoot = null;
 
@@ -73,6 +69,10 @@ function commitWork(fiber?: Fiber | null) {
     return;
   }
 
+  if (fiber.deletions) {
+    fiber.deletions.forEach(commitWork);
+  }
+
   commitWork(fiber.child);
   commitWork(fiber.sibling);
 }
@@ -100,7 +100,9 @@ function workLoop(deadline: IdleDeadline) {
   let shouldYield = deadline.timeRemaining() < 5;
 
   while (renderContext.nextUnitOfWork && !shouldYield) {
-    renderContext.nextUnitOfWork = performUnitOfWork(renderContext.nextUnitOfWork);
+    renderContext.nextUnitOfWork = performUnitOfWork(
+      renderContext.nextUnitOfWork,
+    );
     shouldYield = deadline.timeRemaining() < 5;
   }
 
@@ -137,7 +139,7 @@ function performUnitOfWork(fiber: Fiber): Fiber | null {
 
 function updateFunctionComponent(fiber: Fiber) {
   renderContext.wipFiber = fiber;
-  renderContext.hookIndex = 0;
+  renderContext.wipHookIndex = 0;
   renderContext.wipFiber.hooks = [];
 
   const children = [(fiber.type as FC)(fiber.props)];
@@ -151,37 +153,38 @@ function updateHostComponent(fiber: Fiber) {
   reconcileChildren(fiber, fiber.props.children as VNode[]);
 }
 
-function reconcileChildren(parentFiber: Fiber, elements: VNode[]) {
+function reconcileChildren(wipFiber: Fiber, newChildren: VNode[]) {
   let index = 0;
-  let oldFiber = parentFiber.alternate?.child;
+  let existingChild = wipFiber.alternate?.child;
   let prevSibling: Fiber | null = null;
 
-  while (index < elements.length || oldFiber) {
-    const element = elements[index];
+  while (index < newChildren.length || existingChild) {
+    const newChild = newChildren[index];
     let newFiber: Fiber | null = null;
 
-    const sameType = oldFiber && element && element.type === oldFiber.type;
+    const sameType =
+      existingChild && newChild && newChild.type === existingChild.type;
 
-    if (sameType && oldFiber) {
+    if (sameType && existingChild) {
       newFiber = {
-        type: oldFiber.type,
-        props: element.props,
-        dom: oldFiber.dom,
-        parent: parentFiber,
+        type: existingChild.type,
+        props: newChild.props,
+        dom: existingChild.dom,
+        parent: wipFiber,
         child: null,
         sibling: null,
-        alternate: oldFiber,
+        alternate: existingChild,
         effectTag: "UPDATE",
         hooks: null,
       };
     }
 
-    if (element && !sameType) {
+    if (newChild && !sameType) {
       newFiber = {
-        type: element.type,
-        props: element.props,
+        type: newChild.type,
+        props: newChild.props,
         dom: null,
-        parent: parentFiber,
+        parent: wipFiber,
         child: null,
         sibling: null,
         alternate: null,
@@ -190,17 +193,18 @@ function reconcileChildren(parentFiber: Fiber, elements: VNode[]) {
       };
     }
 
-    if (oldFiber && !sameType) {
-      oldFiber.effectTag = "DELETION";
-      renderContext.deletions.push(oldFiber);
+    if (existingChild && !sameType) {
+      existingChild.effectTag = "DELETION";
+      wipFiber.deletions = wipFiber.deletions || [];
+      wipFiber.deletions.push(existingChild);
     }
 
-    if (oldFiber) {
-      oldFiber = oldFiber.sibling;
+    if (existingChild) {
+      existingChild = existingChild.sibling;
     }
 
     if (index === 0) {
-      parentFiber.child = newFiber!;
+      wipFiber.child = newFiber!;
     } else if (prevSibling && newFiber) {
       prevSibling.sibling = newFiber;
     }

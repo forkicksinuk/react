@@ -6,7 +6,7 @@ export function useEffect(
   deps?: any[]
 ): void {
   const oldHook = renderContext.wipFiber?.alternate?.hooks?.[
-    renderContext.hookIndex
+    renderContext.wipHookIndex
   ] as Effect | undefined;
 
   const hasChanged =
@@ -26,5 +26,5 @@ export function useEffect(
   }
 
   renderContext.wipFiber?.hooks?.push(hook);
-  renderContext.hookIndex += 1;
+  renderContext.wipHookIndex += 1;
 }

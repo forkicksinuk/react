@@ -7,7 +7,7 @@ import { renderContext } from "./state";
  */
 export function useRef<T>(initialValue: T): { current: T } {
   const oldHook = renderContext.wipFiber?.alternate?.hooks?.[
-    renderContext.hookIndex
+    renderContext.wipHookIndex
   ] as RefHook | undefined;
 
   const hook: RefHook = {
@@ -15,7 +15,7 @@ export function useRef<T>(initialValue: T): { current: T } {
   };
 
   renderContext.wipFiber?.hooks?.push(hook);
-  renderContext.hookIndex += 1;
+  renderContext.wipHookIndex += 1;
 
   return hook.ref;
 }
